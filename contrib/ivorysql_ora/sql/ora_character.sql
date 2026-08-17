@@ -21,10 +21,10 @@ CREATE TABLE TEST_ORAVARCHAR(a varchar2(5 char), b varchar2(5 byte));
 
 -- Explicit VARCHAR2(n BYTE) casts retain only complete characters
 SELECT '中文'::varchar2(6 byte) = '中文'
-       AND octet_length('中文'::varchar2(6 byte)) = 6;
+       AND lengthb('中文'::varchar2(6 byte)) = 6;
 SELECT '中文'::varchar2(5 byte) = '中'
-       AND octet_length('中文'::varchar2(5 byte)) = 3;
-SELECT coalesce(octet_length('中文'::varchar2(2 byte)), 0) = 0;
+       AND lengthb('中文'::varchar2(5 byte)) = 3;
+SELECT coalesce(lengthb('中文'::varchar2(2 byte)), 0) = 0;
 SELECT 'abcdef'::varchar2(4 byte) = 'abcd';
 SELECT 'abc'::varchar2(4 byte) = 'abc';
 
