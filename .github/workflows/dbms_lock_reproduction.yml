@@ -37,11 +37,18 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential bison flex libreadline-dev zlib1g-dev
+          sudo apt-get install -y build-essential bison flex libreadline-dev zlib1g-dev \
+            libkrb5-dev libssl-dev libldap-dev libpam-dev python3-dev \
+            tcl-dev libperl-dev gettext libxml2-dev libxslt-dev \
+            libedit-dev uuid-dev libossp-uuid-dev libicu-dev libnuma-dev
 
       - name: Build IvorySQL
         run: |
-          ./configure --prefix="$PWD/inst" --enable-cassert --enable-debug
+          ./configure --prefix="$PWD/inst" --enable-cassert --enable-debug \
+            --with-tcl --with-python --with-gssapi --with-pam --with-ldap \
+            --with-openssl --with-libedit-preferred --with-uuid=e2fs \
+            --with-ossp-uuid --with-libxml --with-libxslt --with-perl \
+            --with-icu --with-libnuma
           make -j2
 
       - name: Run focused DBMS_LOCK regression and print actual output
