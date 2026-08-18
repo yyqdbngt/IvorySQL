@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        implementation: [original]
+        implementation: [fixed]
 
     steps:
       - uses: actions/checkout@v4
