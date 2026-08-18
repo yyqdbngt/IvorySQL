@@ -1,0 +1,78 @@
+name: DBMS_LOCK reproduction
+
+on:
+  push:
+    branches: [codex/dbms-lock-repro]
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        implementation: [upstream, pull-request]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select implementation
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if [ "${{ matrix.implementation }}" = upstream ]; then
+            git fetch https://github.com/IvorySQL/IvorySQL.git master
+            base=$(git merge-base HEAD FETCH_HEAD)
+            git checkout "$base" -- contrib/ivorysql_ora/src/builtin_packages/dbms_lock/dbms_lock.c
+            echo "implementation=upstream base $base" | tee implementation.txt
+          else
+            echo "implementation=pull-request commit $(git rev-parse HEAD)" | tee implementation.txt
+          fi
+
+          # Preserve the observations even when the upstream result differs.
+          sed -i '/assert v_rc = 4/d' contrib/ivorysql_ora/sql/dbms_lock.sql
+          sed -i '/assert v_rc = 4/d' contrib/ivorysql_ora/expected/dbms_lock.out
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential bison flex libreadline-dev zlib1g-dev
+
+      - name: Build IvorySQL
+        run: |
+          ./configure --prefix="$PWD/inst" --enable-cassert --enable-debug
+          make -j2
+
+      - name: Run focused DBMS_LOCK regression and print actual output
+        shell: bash
+        run: |
+          set +e
+          make -C contrib/ivorysql_ora oracle-check ORA_REGRESS=dbms_lock
+          test_status=$?
+          set -e
+
+          result=contrib/ivorysql_ora/results/dbms_lock.out
+          test -f "$result"
+          {
+            cat implementation.txt
+            echo "focused_regression_exit=$test_status"
+            echo "command=make -C contrib/ivorysql_ora oracle-check ORA_REGRESS=dbms_lock"
+            echo "--- observed DBMS_LOCK notices ---"
+            grep -E 'NOTICE:  (request rc|second request rc|release rc|mode=)' "$result"
+          } | tee reproduction.txt
+
+          if [ "${{ matrix.implementation }}" = upstream ]; then
+            test "$(grep -c 'NOTICE:  second request rc=0' "$result")" -eq 2
+            test "$(grep -c 'NOTICE:  mode=ShareLock' "$result")" -eq 2
+            test "$(grep -c 'NOTICE:  mode=ExclusiveLock' "$result")" -eq 2
+          else
+            test "$(grep -c 'NOTICE:  second request rc=4' "$result")" -eq 2
+            test "$(grep -c 'NOTICE:  mode=not found' "$result")" -eq 2
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dbms-lock-${{ matrix.implementation }}
+          path: reproduction.txt
+          retention-days: 30
