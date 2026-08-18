@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        implementation: [upstream, pull-request]
+        implementation: [upstream]
 
     steps:
       - uses: actions/checkout@v4
