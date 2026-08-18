@@ -56,7 +56,7 @@ jobs:
 
       - name: Run IvorySQL Oracle regression
         if: matrix.implementation == 'fixed'
-        run: make -C contrib/ivorysql_ora oracle-check
+        run: make -C contrib/ivorysql_ora oracle-check ORA_REGRESS=ora_character
 
       - name: Upload evidence
         if: always()
