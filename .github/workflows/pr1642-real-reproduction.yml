@@ -1,0 +1,67 @@
+name: pr1642-real-reproduction
+
+on:
+  push:
+    branches: [codex/pr1642-real-repro]
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        implementation: [original, fixed]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select implementation
+        if: matrix.implementation == 'original'
+        run: git checkout c3529ba4789ee220caefc858e58bbe6f1563ad14 -- contrib/ivorysql_ora/src/datatype/oravarcharbyte.c
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential bison flex libreadline-dev zlib1g-dev
+
+      - name: Build and install IvorySQL
+        run: |
+          ./configure --prefix="$PWD/inst" --enable-cassert --enable-debug
+          make -j2
+          make install
+
+      - name: Run exact reproduction
+        run: |
+          set -o pipefail
+          export PATH="$PWD/inst/bin:$PATH"
+          export LC_ALL=C.UTF-8
+          initdb -D "$PWD/data" -m oracle --no-sync
+          pg_ctl -D "$PWD/data" -l "$PWD/server.log" start
+          trap 'pg_ctl -D "$PWD/data" stop -m fast' EXIT
+          {
+            echo "implementation=${{ matrix.implementation }}"
+            uname -a
+            postgres --version
+            psql -X -d postgres -v ON_ERROR_STOP=0 <<'SQL'
+          SHOW server_encoding;
+          SHOW ivorysql.compatible_mode;
+          SELECT lengthb(CAST('中文' AS VARCHAR2(4 BYTE))) AS byte_length;
+          SELECT CAST('中文' AS VARCHAR2(4 BYTE)) = '中' AS complete_character;
+          SELECT encode(convert_to(CAST('中文' AS VARCHAR2(4 BYTE)), 'UTF8'), 'hex') AS utf8_hex;
+          SQL
+          } 2>&1 | tee "reproduction-${{ matrix.implementation }}.txt"
+
+      - name: Run focused Oracle regression
+        if: matrix.implementation == 'fixed'
+        run: make -C contrib/ivorysql_ora check
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr1642-${{ matrix.implementation }}
+          path: |
+            reproduction-${{ matrix.implementation }}.txt
+            server.log
+            contrib/ivorysql_ora/regression.diffs
+          if-no-files-found: ignore
