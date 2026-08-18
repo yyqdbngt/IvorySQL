@@ -54,9 +54,9 @@ jobs:
           SQL
           } 2>&1 | tee "reproduction-${{ matrix.implementation }}.txt"
 
-      - name: Run focused Oracle regression
+      - name: Run IvorySQL Oracle regression
         if: matrix.implementation == 'fixed'
-        run: make -C contrib/ivorysql_ora check
+        run: make -C contrib/ivorysql_ora oracle-check
 
       - name: Upload evidence
         if: always()
