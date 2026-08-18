@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        implementation: [fixed]
+        implementation: [original]
 
     steps:
       - uses: actions/checkout@v4
@@ -46,6 +46,7 @@ jobs:
             postgres --version
             psql -X -d postgres -v ON_ERROR_STOP=0 <<'SQL'
           SHOW server_encoding;
+          SET ivorysql.compatible_mode = oracle;
           SHOW ivorysql.compatible_mode;
           SELECT lengthb(CAST('中文' AS VARCHAR2(4 BYTE))) AS byte_length;
           SELECT CAST('中文' AS VARCHAR2(4 BYTE)) = '中' AS complete_character;
