@@ -10614,6 +10614,7 @@ RETURNS numeric
 AS $$SELECT pg_catalog.round($1,$2);$$
 LANGUAGE SQL
 STRICT
+PARALLEL SAFE
 IMMUTABLE;
 
 CREATE CAST (sys.oravarcharchar AS float8)
