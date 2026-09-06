@@ -10583,7 +10583,7 @@ AS IMPLICIT;
 
 --create function for sgrdb
 -- add immutable
-create or replace function sys.to_char(text) RETURNS text AS $$ SELECT $1 $$ LANGUAGE SQL IMMUTABLE;
+create or replace function sys.to_char(text) RETURNS text AS $$ SELECT $1 $$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE;
 
 -- generate_series support int2,int4,int8 but number has more choices will result error
 CREATE FUNCTION sys.generate_series(number, number) returns setof numeric AS $$
