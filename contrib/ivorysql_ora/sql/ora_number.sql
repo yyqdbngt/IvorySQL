@@ -943,3 +943,11 @@ SELECT BITAND('6','8') re FROM DUAL;
 SELECT BITAND(6,'8') re FROM DUAL;
 SELECT BITAND('6',8) re FROM DUAL;
 /* End - bug0000478 */
+
+
+-- Verify number generate_series overloads are parallel safe.
+SELECT count(*) = 2 AS number_generate_series_parallel_safe
+FROM pg_catalog.pg_proc
+WHERE oid IN ('sys.generate_series(sys.number,sys.number)'::regprocedure,
+              'sys.generate_series(sys.number,sys.number,sys.number)'::regprocedure)
+  AND proparallel = 's';

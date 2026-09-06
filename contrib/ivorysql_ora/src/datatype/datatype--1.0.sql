@@ -10588,11 +10588,11 @@ create or replace function sys.to_char(text) RETURNS text AS $$ SELECT $1 $$ LAN
 -- generate_series support int2,int4,int8 but number has more choices will result error
 CREATE FUNCTION sys.generate_series(number, number) returns setof numeric AS $$
 SELECT PG_CATALOG.generate_series($1::numeric,$2::numeric)
-$$ LANGUAGE SQL IMMUTABLE;
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE;
 
 CREATE FUNCTION sys.generate_series(number, number, number) returns setof numeric AS $$
 SELECT PG_CATALOG.generate_series($1::numeric,$2::numeric, $3::numeric)
-$$ LANGUAGE SQL IMMUTABLE;
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE;
 
 CREATE CAST (sys.oravarcharchar AS pg_catalog.int4)
 WITH INOUT
