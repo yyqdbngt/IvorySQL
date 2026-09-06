@@ -410,6 +410,7 @@ RETURNS sys.oravarcharchar
 AS 'MODULE_PATHNAME','rtrim'
 LANGUAGE C
 STRICT
+PARALLEL SAFE
 IMMUTABLE;
 
 CREATE CAST (sys.oracharchar AS sys.oravarcharchar)
@@ -422,6 +423,7 @@ RETURNS sys.oravarcharbyte
 AS 'MODULE_PATHNAME','rtrim'
 LANGUAGE C
 STRICT
+PARALLEL SAFE
 IMMUTABLE;
 
 CREATE CAST (sys.oracharchar AS sys.oravarcharbyte)
@@ -834,6 +836,7 @@ RETURNS sys.oravarcharchar
 AS 'MODULE_PATHNAME','rtrim'
 LANGUAGE C
 STRICT
+PARALLEL SAFE
 IMMUTABLE;
 
 CREATE CAST (sys.oracharbyte AS sys.oravarcharchar)
@@ -846,6 +849,7 @@ RETURNS sys.oravarcharbyte
 AS 'MODULE_PATHNAME','rtrim'
 LANGUAGE C
 STRICT
+PARALLEL SAFE
 IMMUTABLE;
 
 CREATE CAST (sys.oracharbyte AS sys.oravarcharbyte)
