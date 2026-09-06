@@ -3498,6 +3498,7 @@ CREATE FUNCTION sys.oravarcharcat(sys.oravarcharchar, sys.oravarcharchar)
 RETURNS sys.oravarcharchar
 AS 'MODULE_PATHNAME','oravarcharcat'
 LANGUAGE C
+PARALLEL SAFE
 IMMUTABLE;
 
 CREATE OPERATOR ||  (
@@ -3510,6 +3511,7 @@ CREATE FUNCTION sys.concat(sys.oravarcharchar, sys.oravarcharchar)
 RETURNS sys.oravarcharchar
 AS 'MODULE_PATHNAME','oravarcharcat'
 LANGUAGE C
+PARALLEL SAFE
 IMMUTABLE;
 /***************************************************************
  *
