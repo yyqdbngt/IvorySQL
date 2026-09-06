@@ -3572,6 +3572,7 @@ RETURNS pg_catalog.date
 AS 'MODULE_PATHNAME','oradate_date'
 LANGUAGE C
 STRICT
+PARALLEL SAFE
 IMMUTABLE;
 
 CREATE CAST (sys.oradate AS pg_catalog.date)
