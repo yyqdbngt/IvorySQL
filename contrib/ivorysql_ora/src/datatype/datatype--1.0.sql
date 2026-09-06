@@ -155,6 +155,7 @@ RETURNS sys.oracharchar
 AS 'MODULE_PATHNAME','bool_orachar'
 LANGUAGE C
 STRICT
+PARALLEL SAFE
 IMMUTABLE;
 
 -- Convert oracharchar to xml
