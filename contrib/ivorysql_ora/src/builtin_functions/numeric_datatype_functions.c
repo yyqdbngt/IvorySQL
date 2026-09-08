@@ -84,30 +84,26 @@ ora_to_number(PG_FUNCTION_ARGS)
 /*
  * number_nanvl
  * Oracle NANVL(expr1, expr2) for NUMBER: returns expr2 when expr1
- * is NaN, otherwise returns expr1. PostgreSQL's numeric type (unlike
- * Oracle's NUMBER) can hold a NaN value, so this reuses the existing
- * numeric_is_nan() rather than assuming expr1 is never NaN.
+ * is NaN, otherwise returns expr1. The PostgreSQL numeric type can
+ * hold a NaN value, so this reuses numeric_is_nan() rather than
+ * assuming expr1 is never NaN.
  *
- * Oracle only inspects expr1: expr2 is evaluated (and thus only
- * matters) when expr1 is NaN, so this function cannot be STRICT --
- * a NULL expr2 must not force a NULL result when expr1 is a normal
- * (non-NaN) value.
+ * NUMBER and BINARY_FLOAT overloads are STRICT: Oracle evaluates NANVL
+ * to NULL when either argument is NULL. BINARY_DOUBLE remains
+ * non-strict to preserve the double-precision behaviour measured on
+ * Oracle Database 21c XE, which the Oracle SQL Reference does not
+ * document: NANVL(1.5d, NULL) returns 1.5, while the NUMBER and
+ * BINARY_FLOAT overloads return NULL for the same shape of call.
  */
 Datum
 number_nanvl(PG_FUNCTION_ARGS)
 {
 	Numeric		arg1;
 
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
-
 	arg1 = PG_GETARG_NUMERIC(0);
 
 	if (!numeric_is_nan(arg1))
 		PG_RETURN_NUMERIC(arg1);
-
-	if (PG_ARGISNULL(1))
-		PG_RETURN_NULL();
 
 	PG_RETURN_NUMERIC(PG_GETARG_NUMERIC(1));
 }
@@ -115,24 +111,18 @@ number_nanvl(PG_FUNCTION_ARGS)
 /*
  * binary_float_nanvl
  * Oracle NANVL(expr1, expr2) for BINARY_FLOAT: returns expr2 when
- * expr1 is NaN, otherwise returns expr1. See number_nanvl() for why
- * this cannot be STRICT.
+ * expr1 is NaN, otherwise returns expr1. This overload is STRICT, so
+ * a NULL expr2 produces NULL just as it does for NUMBER.
  */
 Datum
 binary_float_nanvl(PG_FUNCTION_ARGS)
 {
 	float4		arg1;
 
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
-
 	arg1 = PG_GETARG_FLOAT4(0);
 
 	if (!isnan(arg1))
 		PG_RETURN_FLOAT4(arg1);
-
-	if (PG_ARGISNULL(1))
-		PG_RETURN_NULL();
 
 	PG_RETURN_FLOAT4(PG_GETARG_FLOAT4(1));
 }
@@ -140,8 +130,10 @@ binary_float_nanvl(PG_FUNCTION_ARGS)
 /*
  * binary_double_nanvl
  * Oracle NANVL(expr1, expr2) for BINARY_DOUBLE: returns expr2 when
- * expr1 is NaN, otherwise returns expr1. See number_nanvl() for why
- * this cannot be STRICT.
+ * expr1 is NaN, otherwise returns expr1. This overload cannot be
+ * STRICT: measured Oracle behaviour returns a non-NaN expr1 even when
+ * expr2 is NULL, so the NULL check is done here instead (see
+ * number_nanvl() for the probes and the per-type difference).
  */
 Datum
 binary_double_nanvl(PG_FUNCTION_ARGS)
