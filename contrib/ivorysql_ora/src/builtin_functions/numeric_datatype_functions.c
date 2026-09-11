@@ -94,16 +94,29 @@ ora_to_number(PG_FUNCTION_ARGS)
  * Oracle Database 21c XE, which the Oracle SQL Reference does not
  * document: NANVL(1.5d, NULL) returns 1.5, while the NUMBER and
  * BINARY_FLOAT overloads return NULL for the same shape of call.
+ *
+ * The NULL checks below cannot be reached while the SQL declaration is
+ * STRICT, and they are kept on purpose: if the loaded library and the
+ * catalogue declaration ever disagree -- a rebuild installed over an
+ * existing cluster, a dump/restore or pg_upgrade that kept the old
+ * non-STRICT entry, or a backport that carried only part of this change
+ * -- they stop PG_GETARG_NUMERIC() from being handed a NULL datum.
  */
 Datum
 number_nanvl(PG_FUNCTION_ARGS)
 {
 	Numeric		arg1;
 
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+
 	arg1 = PG_GETARG_NUMERIC(0);
 
 	if (!numeric_is_nan(arg1))
 		PG_RETURN_NUMERIC(arg1);
+
+	if (PG_ARGISNULL(1))
+		PG_RETURN_NULL();
 
 	PG_RETURN_NUMERIC(PG_GETARG_NUMERIC(1));
 }
@@ -112,17 +125,24 @@ number_nanvl(PG_FUNCTION_ARGS)
  * binary_float_nanvl
  * Oracle NANVL(expr1, expr2) for BINARY_FLOAT: returns expr2 when
  * expr1 is NaN, otherwise returns expr1. This overload is STRICT, so
- * a NULL expr2 produces NULL just as it does for NUMBER.
+ * a NULL expr2 produces NULL just as it does for NUMBER. The NULL checks
+ * are kept for the same reason as in number_nanvl().
  */
 Datum
 binary_float_nanvl(PG_FUNCTION_ARGS)
 {
 	float4		arg1;
 
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+
 	arg1 = PG_GETARG_FLOAT4(0);
 
 	if (!isnan(arg1))
 		PG_RETURN_FLOAT4(arg1);
+
+	if (PG_ARGISNULL(1))
+		PG_RETURN_NULL();
 
 	PG_RETURN_FLOAT4(PG_GETARG_FLOAT4(1));
 }
