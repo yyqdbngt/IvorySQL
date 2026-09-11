@@ -104,6 +104,6 @@ jobs:
       if: failure()
       uses: actions/upload-artifact@v4
       with:
-        name: oracle-meson-test-failures-${{ github.sha }}
+        name: meson-test-failures-${{ github.sha }}
         path: test-logs.tar.gz
         retention-days: 30
