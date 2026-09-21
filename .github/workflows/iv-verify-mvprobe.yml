@@ -33,6 +33,7 @@ jobs:
             --with-uuid=e2fs --with-libxml --with-libxslt --with-icu >configure.log 2>&1
           make -j"$(nproc)" world-bin >build.log 2>&1
           make install-world-bin >install.log 2>&1
+          make -C contrib/ivorysql_ora install >contrib-install.log 2>&1
 
       - name: Oracle-mode behaviour check
         run: |
