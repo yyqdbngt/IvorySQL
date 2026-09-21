@@ -63,7 +63,8 @@ jobs:
           psql -X -h "$RUNNER_TEMP" -p 55444 -d postgres -c "create table pgprobe_t(a int); create view pgprobe_v as select a from pgprobe_t; drop view pgprobe_v; select 'plain drop view ok' as note;"
           pg_ctl -D "$RUNNER_TEMP/pg2" stop -m fast || true
 
-      - name: Collect logs        if: always()
+      - name: Collect logs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: iv-probe-ora-force-view-lifecycle
