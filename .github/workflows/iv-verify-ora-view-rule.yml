@@ -52,8 +52,18 @@ jobs:
           cat contrib/ivorysql_ora/results/ora_force_view_lifecycle.out 2>/dev/null || echo '(no results file)'
           echo '===== end ====='
 
-      - name: Collect logs
+      - name: PG-mode cluster: does pg_force_view exist and does DROP VIEW work
         if: always()
+        run: |
+          export PATH="$RUNNER_TEMP/install/bin:$PATH"
+          initdb -D "$RUNNER_TEMP/pg2" -m pg --auth trust --no-sync --no-instructions --lc-messages=C -E UTF8 >pg2-initdb.log 2>&1 || { echo 'initdb -m pg FAILED'; tail -n 20 pg2-initdb.log; }
+          pg_ctl -D "$RUNNER_TEMP/pg2" -l "$RUNNER_TEMP/pg2.log" -o "-p 55444 -k $RUNNER_TEMP" -w start || tail -n 20 "$RUNNER_TEMP/pg2.log"
+          psql -X -h "$RUNNER_TEMP" -p 55444 -d postgres -c "show ivorysql.compatible_mode;"
+          psql -X -h "$RUNNER_TEMP" -p 55444 -d postgres -c "select count(*) as force_view_rows_in_pg_cluster from pg_force_view;"
+          psql -X -h "$RUNNER_TEMP" -p 55444 -d postgres -c "create table pgprobe_t(a int); create view pgprobe_v as select a from pgprobe_t; drop view pgprobe_v; select 'plain drop view ok' as note;"
+          pg_ctl -D "$RUNNER_TEMP/pg2" stop -m fast || true
+
+      - name: Collect logs        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: iv-probe-ora-force-view-lifecycle
