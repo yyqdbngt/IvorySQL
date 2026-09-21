@@ -1,0 +1,59 @@
+# Fork-only verification workflow.  It exists only on the iv-red/<slug> and
+# iv-fix/<slug> branches of this fork and is never part of a pull request branch.
+name: iv-verify-mvprobe
+
+on:
+  push:
+    branches:
+      - iv-red/mvprobe
+      - iv-fix/mvprobe
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential bison flex gettext \
+            libreadline-dev zlib1g-dev uuid-dev libxml2-dev libxslt1-dev \
+            libicu-dev libipc-run-perl
+
+      - name: Configure and build
+        run: |
+          ./configure --prefix="$RUNNER_TEMP/install" --enable-cassert --enable-debug \
+            --with-uuid=e2fs --with-libxml --with-libxslt --with-icu >configure.log 2>&1
+          make -j"$(nproc)" world-bin >build.log 2>&1
+          make install-world-bin >install.log 2>&1
+
+      - name: Oracle-mode behaviour check
+        run: |
+          export PATH="$RUNNER_TEMP/install/bin:$PATH"
+          initdb -D "$RUNNER_TEMP/pgdata" -m oracle --no-locale -E UTF8 >initdb.log 2>&1
+          pg_ctl -D "$RUNNER_TEMP/pgdata" -l "$RUNNER_TEMP/server.log" \
+            -o "-p 55432 -c ivorysql.port=55433 -c listen_addresses=127.0.0.1 -c ivorysql.listen_addresses=127.0.0.1" \
+            start
+          sleep 3
+          psql -X -a -p 55433 -d postgres -f iv-check.sql 2>&1 | tee iv-check.log
+          if grep -q 'BUG:' iv-check.log; then
+            echo "::error::defect reproduced - see the BUG lines above"
+            exit 1
+          fi
+
+      - name: Collect logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iv-verify-mvprobe-logs
+          path: |
+            *.log
+            ${{ runner.temp }}/server.log
+          if-no-files-found: warn
