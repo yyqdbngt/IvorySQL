@@ -52,7 +52,7 @@ jobs:
           cat contrib/ivorysql_ora/results/ora_force_view_lifecycle.out 2>/dev/null || echo '(no results file)'
           echo '===== end ====='
 
-      - name: PG-mode cluster: does pg_force_view exist and does DROP VIEW work
+      - name: PG-mode cluster check (pg_force_view present, plain DROP VIEW works)
         if: always()
         run: |
           export PATH="$RUNNER_TEMP/install/bin:$PATH"
