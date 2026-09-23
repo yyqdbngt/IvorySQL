@@ -1,0 +1,54 @@
+# Fork-only PROBE workflow (characterisation run, not evidence).
+name: iv-probe-ptype
+on:
+  push:
+    branches:
+      - probe/ora-func-invalidate-ptype
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential bison flex gettext \
+            libreadline-dev zlib1g-dev uuid-dev libxml2-dev libxslt1-dev \
+            libicu-dev libipc-run-perl
+      - name: Configure, build and install
+        run: |
+          set -o pipefail
+          ./configure --prefix="$RUNNER_TEMP/install" --enable-cassert --enable-debug \
+            --with-uuid=e2fs --with-libxml --with-libxslt --with-icu >configure.log 2>&1
+          make -j"$(nproc)" world-bin >build.log 2>&1
+          make install-world-bin >install.log 2>&1
+          make -C contrib/ivorysql_ora install >contrib-install.log 2>&1
+      - name: Oracle regression probe zzz_probe_ptype
+        run: |
+          set -o pipefail
+          export PATH="$RUNNER_TEMP/install/bin:$PATH"
+          echo "head: $(git rev-parse HEAD)"
+          make -C src/oracle_test/regress oracle-check-tests TESTS='zzz_probe_ptype' \
+            EXTRA_INSTALL='contrib/ivorysql_ora src/oracle_test/regress' > target.log 2>&1 || true
+          tail -n 5 target.log
+      - name: PROBE RAW OUTPUT (not evidence)
+        if: always()
+        run: |
+          echo '===== RAW RESULTS ====='
+          cat src/oracle_test/regress/results/zzz_probe_ptype.out 2>/dev/null || echo '(no results file)'
+          echo '===== end ====='
+      - name: Collect logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iv-probe-ptype-logs
+          path: |
+            *.log
+            tmp_install/log/
+            src/oracle_test/regress/results/
+            src/oracle_test/regress/regression.diffs
+          if-no-files-found: warn
