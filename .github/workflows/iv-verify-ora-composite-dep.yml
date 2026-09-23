@@ -1,0 +1,70 @@
+# Fork-only verification workflow.  It lives only on the iv-red/iv-fix branches
+# of this fork and is never part of a pull request branch.
+name: iv-verify-ora-composite-dep
+
+on:
+  push:
+    branches:
+      - iv-red/ora-composite-dep
+      - iv-fix/ora-composite-dep
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential bison flex gettext \
+            libreadline-dev zlib1g-dev uuid-dev libxml2-dev libxslt1-dev \
+            libicu-dev libipc-run-perl
+
+      - name: Configure, build and install
+        run: |
+          set -o pipefail
+          ./configure --prefix="$RUNNER_TEMP/install" --enable-cassert --enable-debug \
+            --with-uuid=e2fs --with-libxml --with-libxslt --with-icu >configure.log 2>&1
+          make -j"$(nproc)" world-bin >build.log 2>&1
+          make install-world-bin >install.log 2>&1
+          make -C contrib/ivorysql_ora install >contrib-install.log 2>&1
+
+      - name: Oracle regression ora_plisql and ora_package
+        run: |
+          set -o pipefail
+          export PATH="$RUNNER_TEMP/install/bin:$PATH"
+          echo "head: $(git rev-parse HEAD)"
+          make -C src/oracle_test/regress oracle-check-tests TESTS='ora_plisql ora_package' \
+            EXTRA_INSTALL='contrib/ivorysql_ora src/oracle_test/regress' 2>&1 | tee target.log
+          status=$?
+          echo "oracle-check-tests exit status: $status" | tee -a target.log
+          exit $status
+
+      - name: Report results
+        if: always()
+        run: |
+          echo '===== results/ora_plisql.out (tail) ====='
+          tail -n 45 src/oracle_test/regress/results/ora_plisql.out 2>/dev/null || echo '(no results file)'
+          echo '===== regression.diffs ====='
+          cat src/oracle_test/regress/regression.diffs 2>/dev/null || echo '(no regression.diffs)'
+          echo '===== end ====='
+
+      - name: Collect logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iv-verify-ora-composite-dep-logs
+          path: |
+            *.log
+            tmp_install/log/
+            src/oracle_test/regress/results/
+            src/oracle_test/regress/regression.diffs
+            src/oracle_test/regress/regression.out
+          if-no-files-found: warn
