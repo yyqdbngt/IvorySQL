@@ -94,7 +94,6 @@ drop function s1.f_alter(arg1 number, arg2 number);
 drop function s1.f_alter(arg1 OUT int);
 drop function s1.f_alter(arg1 text);
 drop function s1.f_alter(arg1 number, arg2 number, arg3 number);
-
 --
 -- ADD_MONTHS: a month count that does not fit in the date range must be
 -- reported instead of being wrapped into an unrelated date.
