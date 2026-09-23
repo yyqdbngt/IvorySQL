@@ -1,0 +1,68 @@
+# Fork-only verification workflow.  It lives only on the iv-red/<slug> and
+# iv-fix/<slug> branches of this fork and is never part of a pull request branch.
+name: iv-verify-ora-tz-offset-sign
+
+on:
+  push:
+    branches:
+      - iv-red/ora-tz-offset-sign
+      - iv-fix/ora-tz-offset-sign
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential bison flex gettext \
+            libreadline-dev zlib1g-dev uuid-dev libxml2-dev libxslt1-dev \
+            libicu-dev libipc-run-perl
+
+      - name: Configure, build and install
+        run: |
+          set -o pipefail
+          ./configure --prefix="$RUNNER_TEMP/install" --enable-cassert --enable-debug \
+            --with-uuid=e2fs --with-libxml --with-libxslt --with-icu >configure.log 2>&1
+          make -j"$(nproc)" world-bin >build.log 2>&1
+          make install-world-bin >install.log 2>&1
+
+      - name: Oracle regression contrib/ivorysql_ora (ora_datetime)
+        run: |
+          set -o pipefail
+          export PATH="$RUNNER_TEMP/install/bin:$PATH"
+          echo "head: $(git rev-parse HEAD)"
+          make -C contrib/ivorysql_ora oracle-check ORA_REGRESS='ora_datetime' 2>&1 | tee target.log
+          status=$?
+          echo "oracle-check exit status: $status" | tee -a target.log
+          exit $status
+
+      - name: Report results
+        if: always()
+        run: |
+          echo '===== results/ora_datetime.out (tail) ====='
+          tail -n 80 contrib/ivorysql_ora/results/ora_datetime.out 2>/dev/null || echo '(no results file)'
+          echo '===== contrib/ivorysql_ora/regression.diffs ====='
+          cat contrib/ivorysql_ora/regression.diffs 2>/dev/null || echo '(no regression.diffs)'
+          echo '===== end ====='
+
+      - name: Collect logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iv-verify-ora-tz-offset-sign-logs
+          path: |
+            *.log
+            tmp_install/log/
+            contrib/ivorysql_ora/results/
+            contrib/ivorysql_ora/regression.diffs
+            contrib/ivorysql_ora/regression.out
+          if-no-files-found: warn
